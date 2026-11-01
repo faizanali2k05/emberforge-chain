@@ -1,25 +1,27 @@
-use emberforge_chain::{Blockchain, Transaction};
+use emberforge_chain::{Blockchain, Transaction, Wallet};
+use std::collections::HashMap;
 
 fn main() {
-    let mut chain = Blockchain::new(3);
+    let alice = Wallet::generate();
+    let bob = Wallet::generate();
+    let mut genesis = HashMap::new();
+    genesis.insert(alice.address(), 100);
+    let mut chain = Blockchain::new(2, genesis);
 
-    chain.add_block(vec![
-        Transaction::new("alice", "bob", 10),
-        Transaction::new("bob", "carol", 3),
-    ]);
-    chain.add_block(vec![Transaction::new("carol", "dave", 1)]);
+    let payment = Transaction::new(alice.address(), bob.address(), 25, 0).sign(&alice);
+    chain
+        .submit_transaction(payment)
+        .expect("valid signed transaction");
+    chain.mine_pending(&alice.address()).expect("valid block");
 
     println!("Emberforge Chain");
     println!("================");
-    println!("blocks: {}", chain.blocks.len());
-    println!("valid:  {}", chain.is_valid());
-    println!();
-
-    for block in &chain.blocks {
-        println!("block #{}", block.index);
-        println!("  hash:      {}", block.hash);
-        println!("  prev_hash: {}", block.previous_hash);
-        println!("  nonce:     {}", block.nonce);
-        println!("  tx count:  {}", block.transactions.len());
-    }
+    println!(
+        "blocks: {} | valid: {}",
+        chain.blocks.len(),
+        chain.is_valid()
+    );
+    println!("alice:  {}", chain.balance_of(&alice.address()));
+    println!("bob:    {}", chain.balance_of(&bob.address()));
+    println!("tip:    {}", chain.blocks.last().unwrap().hash);
 }
